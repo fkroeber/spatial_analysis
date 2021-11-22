@@ -14,7 +14,7 @@ from PIL import Image
 st.set_page_config(layout="wide")
 st.title('IDW Interpolation - Hourly Temperature (Germany)')
 st.text('')
-col1,_,col2,_,col3,_ = st.columns([4,1,1,0.5,5,0.1])
+col1,_,col2,_,col3 = st.columns([4,1,1,0.5,4])
 
 # Load data
 @st.experimental_singleton
@@ -74,71 +74,72 @@ with col3:
 for all possible combinations of the parameters weigth and number of points 
 for the selected date. The black dot marks the current parameter selection.''')
 
-    def rmse(single_diffs):
-        return math.sqrt((single_diffs**2).sum()/single_diffs.count())
+    with st.container():
+        def rmse(single_diffs):
+            return math.sqrt((single_diffs**2).sum()/single_diffs.count())
 
-    def get_pow(layer_name):
-        str_pow = [name.rsplit("_",2)[1].replace("pow","") for name in layer_name]
-        float_pow = [float(pow[:1]+'.'+pow[1:]) if len(pow)>1 else float(pow) for pow in str_pow]
-        return float_pow
+        def get_pow(layer_name):
+            str_pow = [name.rsplit("_",2)[1].replace("pow","") for name in layer_name]
+            float_pow = [float(pow[:1]+'.'+pow[1:]) if len(pow)>1 else float(pow) for pow in str_pow]
+            return float_pow
 
-    def get_npoi(layer_name):
-        int_npoi = [int(name.rsplit("_",1)[1].replace("npoi","")) for name in layer_name]
-        return int_npoi
-
-
-    val_overview = (idw_val.groupby(['idw_layer'])
-                        .agg(rmse=('diff_meas_interpol', rmse))
-                        .reset_index()
-                        .assign(temptime = lambda x: [name.split("_")[0] for name in x['idw_layer']])
-                        .assign(npoi=lambda x: get_npoi(x['idw_layer']))
-                        .assign(pow=lambda x: get_pow(x['idw_layer'])))
-
-    fig_prep = (val_overview[val_overview['temptime']==selected_img_name.split("_")[0]]
-                        .sort_values(['npoi','pow'])
-                        .groupby(['npoi'])
-                        .agg({'pow': lambda x: list(x),
-                                'rmse': lambda x: list(x)})
-                        .reset_index())
-
-    fig = go.Figure(data=go.Heatmap(
-        x = fig_prep['pow'][0],
-        y = list(fig_prep['npoi']),
-        z = list(fig_prep['rmse']),
-        zsmooth='best',
-        colorscale='RdBu_r',
-        hoverinfo=None,
-        name=''))
-    fig.add_scatter(x=val_overview[val_overview['idw_layer']==selected_img_name]['pow'].tolist(),
-                    y=val_overview[val_overview['idw_layer']==selected_img_name]['npoi'].tolist(),
-                    mode='markers',
-                    name='current parameter selection',
-                    marker=dict(size=12, color='black'))
-    fig.update_xaxes(title=dict(text='power'))
-    fig.update_yaxes(title=dict(text='number of points'))
-    st.plotly_chart(fig)
+        def get_npoi(layer_name):
+            int_npoi = [int(name.rsplit("_",1)[1].replace("npoi","")) for name in layer_name]
+            return int_npoi
 
 
-    st.text('')
-    st.text('''Below the leave-one-group-out cross-validation results for the chosen parameter
+        val_overview = (idw_val.groupby(['idw_layer'])
+                            .agg(rmse=('diff_meas_interpol', rmse))
+                            .reset_index()
+                            .assign(temptime = lambda x: [name.split("_")[0] for name in x['idw_layer']])
+                            .assign(npoi=lambda x: get_npoi(x['idw_layer']))
+                            .assign(pow=lambda x: get_pow(x['idw_layer'])))
+
+        fig_prep = (val_overview[val_overview['temptime']==selected_img_name.split("_")[0]]
+                            .sort_values(['npoi','pow'])
+                            .groupby(['npoi'])
+                            .agg({'pow': lambda x: list(x),
+                                    'rmse': lambda x: list(x)})
+                            .reset_index())
+
+        fig = go.Figure(data=go.Heatmap(
+            x = fig_prep['pow'][0],
+            y = list(fig_prep['npoi']),
+            z = list(fig_prep['rmse']),
+            zsmooth='best',
+            colorscale='RdBu_r',
+            hoverinfo=None,
+            name=''))
+        fig.add_scatter(x=val_overview[val_overview['idw_layer']==selected_img_name]['pow'].tolist(),
+                        y=val_overview[val_overview['idw_layer']==selected_img_name]['npoi'].tolist(),
+                        mode='markers',
+                        name='current parameter selection',
+                        marker=dict(size=12, color='black'))
+        fig.update_xaxes(title=dict(text='power'))
+        fig.update_yaxes(title=dict(text='number of points'))
+        st.plotly_chart(fig)
+
+
+        st.text('')
+        st.text('''Below the leave-one-group-out cross-validation results for the chosen parameter
 combination is shown. Points are colorised according to their height above see level
-since this variable mostly explains very strong deviations.''')
-    val_specific = idw_val[idw_val['idw_layer']==selected_img_name]
-    val_specific['temp_interpolated'] = val_specific['temp'] + val_specific['diff_meas_interpol']
-    fig = px.scatter(val_specific, 
-                    x='temp', 
-                    y='temp_interpolated', 
-                    color='height', 
-                    color_continuous_scale=["#1A9850", "#91CF60", "#F1A340", "#8C510A"],
-                    trendline='ols',
-                    trendline_color_override='green',
-                    hover_data=['station_name', 'federal_state'],
-                    labels=dict(temp='measured temperature(°C)', temp_interpolated='interpolated temperature(°C)'))
-    fig.add_trace(go.Scatter(x=np.arange(min(val_specific['temp']), max(val_specific['temp']),0.01),
-                            y=np.arange(min(val_specific['temp']), max(val_specific['temp']),0.01),
-                            text='1:1 line',
-                            name='',
-                            mode='lines',
-                            line=dict(color='grey'),
-                            showlegend=False))
-    st.plotly_chart(fig)
+as this variable explains the strongest deviations.''')
+        val_specific = idw_val[idw_val['idw_layer']==selected_img_name]
+        val_specific['temp_interpolated'] = val_specific['temp'] + val_specific['diff_meas_interpol']
+        fig = px.scatter(val_specific, 
+                        x='temp', 
+                        y='temp_interpolated', 
+                        color='height', 
+                        color_continuous_scale=["#1A9850", "#91CF60", "#F1A340", "#8C510A"],
+                        trendline='ols',
+                        trendline_color_override='green',
+                        hover_data=['station_name', 'federal_state'],
+                        labels=dict(temp='measured temperature(°C)', temp_interpolated='interpolated temperature(°C)'))
+        fig.add_trace(go.Scatter(x=np.arange(min(val_specific['temp']), max(val_specific['temp']),0.01),
+                                y=np.arange(min(val_specific['temp']), max(val_specific['temp']),0.01),
+                                text='1:1 line',
+                                name='',
+                                mode='lines',
+                                line=dict(color='grey'),
+                                showlegend=False))
+        st.plotly_chart(fig)
