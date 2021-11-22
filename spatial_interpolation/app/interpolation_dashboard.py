@@ -14,7 +14,7 @@ from PIL import Image
 st.set_page_config(layout="wide")
 st.title('IDW Interpolation - Hourly Temperature (Germany)')
 st.text('')
-col1,e1,col2,e2,col3 = st.columns([4,1,1,0.5,5])
+col1,_,col2,_,col3,_ = st.columns([4,1,1,0.5,5,0.1])
 
 # Load data
 @st.experimental_singleton
