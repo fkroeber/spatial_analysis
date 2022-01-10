@@ -12,7 +12,6 @@ ui <- fluidPage(
   titlePanel("Views along Austrian hiking paths"),
   sidebarLayout(
     sidebarPanel(
-      actionButton("browser", "browser"),
       verbatimTextOutput("clickInfo"),
       checkboxInput("paths", "show paths", value = T, width = NULL),
       checkboxInput("points", "show viewpoints along paths", value = F, width = NULL),
@@ -180,10 +179,6 @@ server <- function(input, output, session) {
     clicklist(temp)
     data$clickedMarker = input$map_marker_click
     })
-
-  observeEvent(input$browser,{
-    browser()
-  })
 
   # define behaviour in case of marker clicks
   # click: zoom to point, show viewhshed raster and corresponding stats
